@@ -1,0 +1,16 @@
+[project]
+name = "paylink_protocol"
+version = "1.2.0"
+dependencies = ['web3', 'requests', 'eth-abi', 'pycryptodome', 'cachetools']
+authors = [
+    {name = 'Paylink Protocol', email = 'mail@paylinkprotocol.com'}
+]
+description = 'Monetize your digital goods with ease using the Ethereum Blockchain and the Paylink Protocol'
+readme = "README.md"
+requires-python = ">=3.7"
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
