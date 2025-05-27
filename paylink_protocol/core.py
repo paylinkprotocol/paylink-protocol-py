@@ -137,7 +137,8 @@ class PurchaseManager[T]:
             logger.info(f'Error in tier mapping {e.args[0]} | Purchase {purchase}')
             return None
 
-        purchase.tier = tier
+        if purchase.purchaseType != PurchaseType.HOLDING:
+            purchase.tier = tier
         return tier
 
     def getTiersForUser(self, userId: int) -> List[T]:
