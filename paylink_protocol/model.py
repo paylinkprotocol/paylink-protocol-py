@@ -20,4 +20,6 @@ class PurchaseItem:
     purchaseTokenAddress: str
     purchaseAmount: int
     expirationTimestamp: int
+    burnPercentage: int
+    clientWalletAddress: str
     tier: Any = None

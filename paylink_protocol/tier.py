@@ -1,4 +1,4 @@
-from typing import TypeVar, Generic, List, Tuple, Dict
+from typing import TypeVar, Tuple, Dict
 from enum import Enum
 
 from paylink_protocol.model import PurchaseType
@@ -21,7 +21,7 @@ class TierOptionBuilder[T]:
     def newOption(self, tier: T) -> 'TierOptionBuilder[T]':
         return self.finish().newOption(tier)
 
-    def costs(self, _type: PurchaseType, cost: float, time: int | str = 0) -> 'TierOptionBuilder[T]':
+    def costs(self, _type: PurchaseType, cost: float | int, time: int | str = 0, burnPercentage: int = 0) -> 'TierOptionBuilder[T]':
         orig_time = time
         if _type != PurchaseType.HOLDING and time == 0:
             raise ValueError('A non HOLD package needs to have a time specified')
@@ -44,8 +44,10 @@ class TierOptionBuilder[T]:
 
         if _type not in self.options:
             self.options[_type] = {}
-        if time not in self.options[_type]:
-            self.options[_type][time] = cost
+        if burnPercentage not in self.options[_type]:
+            self.options[_type][burnPercentage] = {}
+        if time not in self.options[_type][burnPercentage]:
+            self.options[_type][burnPercentage][time] = cost
         else:
             raise ValueError(
                 f'PurchaseType {_type} - Timeframe {orig_time} combination specified twice for {self.tier}')
@@ -80,17 +82,79 @@ class TierBuilder[T]:
         for _type in option.options:
             if _type not in self.options:
                 self.options[_type] = {}
-            for time in option.options[_type]:
-                if time not in self.options[_type]:
-                    self.options[_type][time] = {}
-                cost = option.options[_type][time]
-                if cost in self.options[_type][time]:
-                    raise ValueError(
-                        f'Cannot specify cost {cost} twice for type {_type} and time {time}. Already specified tier: {self.options[_type][time][cost]}, trying to specify tier: {option.tier}')
-                self.options[_type][time][cost] = option.tier
+            for burnPercentage in option.options[_type]:
+                if burnPercentage not in self.options[_type]:
+                    self.options[_type][burnPercentage] = {}
+                for time in option.options[_type][burnPercentage]:
+                    if time not in self.options[_type][burnPercentage]:
+                        self.options[_type][burnPercentage][time] = {}
+                    cost = option.options[_type][burnPercentage][time]
+                    if cost in self.options[_type][burnPercentage][time]:
+                        raise ValueError(
+                            f'Cannot specify cost {cost} twice for type {_type}, time {time} and burn Percentage {burnPercentage}. Already specified tier: {self.options[_type][time][cost]}, trying to specify tier: {option.tier}')
+                    self.options[_type][burnPercentage][time][cost] = option.tier
 
     def finish(self) -> Tuple[T, Dict[PurchaseType, Dict[int, Dict[float, T]]]]:
         if self.__default is None:
             raise ValueError('You have to specify a default Tier')
         return self.__default, self.options
+
+
+class TierMapping[T]:
+    def __init__(self, default, mapping, decimals, time_fuzz=60, cost_fuzz=500):
+        self.default = default
+        self.token_decimals = decimals
+        self.time_fuzz = time_fuzz  # time fuzz, because transaction might take a while and is 'fuzzy', in seconds
+        self.cost_fuzz = cost_fuzz  # cost fuzz, because of floating point precision with token decimals
+        real_mapping = {}
+        for _type in mapping:
+            real_mapping[_type] = {}
+            for burnPercentage in mapping[_type]:
+                real_mapping[_type][burnPercentage] = {}
+                for time in mapping[_type][burnPercentage]:
+                    real_mapping[_type][burnPercentage][time] = {}
+                    for cost in mapping[_type][burnPercentage][time]:
+                        power = 18  # default ETH decimals
+                        if _type in (PurchaseType.HOLDING, PurchaseType.PURCHASE_WITH_TOKENS):
+                            power = decimals
+                        real_cost = int(cost * (10**power))
+                        real_mapping[_type][burnPercentage][time][real_cost] = mapping[_type][burnPercentage][time][cost]
+        self.mapping = real_mapping
+
+    def get_corresponding_tier(self, _type, time, burnPercentage, cost) -> T | None:
+        if _type not in self.mapping:
+            raise ValueError(f'Type {_type} is in active purchases, but not specified as a buyable option.')
+
+        if burnPercentage not in self.mapping[_type]:
+            raise ValueError(f'Incorrect burn percentage. You can fool noone')
+
+        timings = list(self.mapping[_type][burnPercentage].keys())
+        timings.sort()
+        comparable_time = time - self.time_fuzz
+
+        _time = timings[-1]
+
+        for t in timings[::-1]:
+            if comparable_time <= t:
+                _time = t
+
+        costs = list(self.mapping[_type][burnPercentage][_time].keys())
+        costs.sort()
+
+        amount_achieved = None
+
+        comparable_cost = cost + self.cost_fuzz
+        for c in costs:
+            if comparable_cost >= c:
+                amount_achieved = c
+
+        if amount_achieved is None:
+            if _type == PurchaseType.HOLDING:
+                raise ValueError('Type is holding, but not enough for any tier')
+            else:
+                raise ValueError(f'User has made a purchase, but did not pay enough for lowest tier.')
+
+        tier = self.mapping[_type][burnPercentage][_time][amount_achieved]
+
+        return tier
 

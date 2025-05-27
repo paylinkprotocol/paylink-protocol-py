@@ -1,24 +1,24 @@
 from Crypto.Hash import SHA256
 
-_testnetMode = True
 
-_min_block_id = 22540453 if not _testnetMode else 8309015
+testnet_min_block_id = 8309015
+mainent_min_block_id = 22540453
 
-_defaultWebsocketMainnet = "wss://ethereum-rpc.publicnode.com"
-_defaultWebsocketTestnet = "wss://ethereum-sepolia-rpc.publicnode.com"
-defaultWebsocket = _defaultWebsocketTestnet if _testnetMode else _defaultWebsocketMainnet
+defaultWebsocketMainnet = "wss://ethereum-rpc.publicnode.com"
+defaultWebsocketTestnet = "wss://ethereum-sepolia-rpc.publicnode.com"
 
-_defaultRpcMainnet = "https://rpc.flashbots.net/fast"
-_defaultRpcTestnet = "https://0xrpc.io/sep"
-defaultRpc = _defaultRpcTestnet if _testnetMode else _defaultRpcMainnet
+defaultRpcMainnet = "https://rpc.flashbots.net/fast"
+defaultRpcTestnet = "https://0xrpc.io/sep"
 
-_routerAddressMainnet = "0xFcFB187EF444D7b01253BB4FAF862C32b36E5aB8"
-_routerAddressTestnet = "0xFcFB187EF444D7b01253BB4FAF862C32b36E5aB8"
-routerAddress = _routerAddressTestnet if _testnetMode else _routerAddressMainnet
+routerAddressMainnet = "0x4DFa81eB3c2215420d25EAeB72513ed63D9Ce9D9"
+routerAddressTestnet = "0x8e722D3F88F9ceb5bf5cda22E2a7a6A9068d72E3"
 
-purchaseTopicHash = "0x4d4815c24dfeda514133b69dffd62369b1e91593b208a9eb14c11e9e6979fb4b"
+weth_testnet = '0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9'
+weth_mainnet = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
 
-payLinkUrl = "https://www.paylink.xyz/{data}"
+purchaseTopicHash = "0xd925127addef674066ef51b2139e736e60b51254deea2faa5d4c606e1a91ac17"
+
+payLinkUrl = "https://www.paylink.xyz/?{data}"
 
 # Encryption
 _PBKDF_salt = bytes.fromhex('31c87b40eb891d0a8f4337c08b3634d7')
