@@ -166,37 +166,43 @@ class PurchaseManager[T]:
         self.stop_event.set()
 
     async def run_until_disconnect(self):
+        task = asyncio.create_task(self._run_until_disconnect())
+        while not self.stop_event.is_set():
+            await asyncio.sleep(3)
+        task.cancel()
+
+    async def _run_until_disconnect(self):
         self.initialize()
         self.running = True
+        logger.info('running PLP loop')
         while not self.stop_event.is_set():
             try:
                 async with AsyncWeb3(WebSocketProvider(self.websocketUrl)) as web3:
-
                     filter_params = LogsSubscriptionArg(address=self.contract_address, topics=[
                             HexStr(self.topic_hash),
                             HexStr("0x" + hex(self.appId).lower().replace("0x", "").rjust(64, "0")),
                         ])
                     subscription_id = await web3.eth.subscribe("logs", filter_params)
-
                     async for payload in web3.socket.process_subscriptions():
-                        if "result" not in payload:
-                            continue
-                        print('got event')
-                        item = self.__decodePurchase(payload["result"])
-                        if item.userId in self.active_purchases:
-                            self.active_purchases[item.userId].append(item)
-                        else:
-                            self.active_purchases[item.userId] = [item]
-                        c = self.callback(item)
-                        if inspect.isawaitable(c):
-                            await c
-
+                        if "result" in payload:
+                            item = self.__decodePurchase(payload["result"])
+                            if item.userId in self.active_purchases:
+                                self.active_purchases[item.userId].append(item)
+                            else:
+                                self.active_purchases[item.userId] = [item]
+                            c = self.callback(item)
+                            if inspect.isawaitable(c):
+                                await c
+                        if self.stop_event.is_set():
+                            break
             except BadResponseFormat as e:
                 logger.warning('Bad Response Format')
                 await asyncio.sleep(1)
             except websockets.exceptions.ConnectionClosedError:
                 logger.warning('Connection Closed Error')
                 await asyncio.sleep(1)
+            except asyncio.CancelledError:
+                return
             except Exception as e:
                 logger.warning(f"Exception while processing purchase events: {e} {traceback.format_exc()}")
                 await asyncio.sleep(5)

@@ -1,6 +1,6 @@
 [project]
 name = "paylink_protocol"
-version = "1.2.0"
+version = "1.2.2"
 dependencies = ['web3', 'requests', 'eth-abi', 'pycryptodome', 'cachetools']
 authors = [
     {name = 'Paylink Protocol', email = 'mail@paylinkprotocol.com'}
